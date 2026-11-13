@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
 
@@ -19,13 +19,29 @@ class ActionResult(BaseModel):
     ok: bool
     message: str
     entry: dict[str, Any] | None = None
+    # 同一条规则 / 任务的重复请求命中首个回执时为 True，message 为“已处理”。
+    duplicate: bool = False
 
 
 class EntryPayload(BaseModel):
-    """登记或修改一条业务记录时提交的字段集合。"""
+    """登记或修改一条业务记录时提交的字段集合。
+
+    动作请求兼容两种写法：一种是 `{"values": {"action": "..."}}`，另一种是页面里
+    直接发出的 `{"action": "...", "request_id": "..."}`。这里用 model_extra 接住
+    顶层字段，再统一并进 values，避免页面请求被当成空动作拒掉。
+    """
 
     values: dict[str, Any] = Field(default_factory=dict)
     remark: str | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+    def merged_values(self) -> dict[str, Any]:
+        merged = dict(self.values)
+        for key, value in (self.model_extra or {}).items():
+            if key not in {"values", "remark"} and key not in merged:
+                merged[key] = value
+        return merged
 
 
 

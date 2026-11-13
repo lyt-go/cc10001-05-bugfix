@@ -14,6 +14,8 @@ class Store:
         self._tables: dict[str, list[dict[str, Any]]] = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
+        # 动作回执：同一条规则 / 任务的重复请求只认首个结论，不重复生效。
+        self.receipts: dict[str, dict[str, Any]] = {}
 
     def module_names(self) -> list[str]:
         return sorted(self._tables)

@@ -1,4 +1,8 @@
-"""采集任务接口：维护采集任务，覆盖提交调度、启动任务、终止任务等动作。"""
+"""采集任务接口：维护采集任务，覆盖提交调度、启动任务、终止任务等动作。
+
+任务的准入结论必须实时读取关联解析规则的落库状态：规则验证中只能查看，
+已废弃的规则禁止再次启动，已完成的采集记录与历史日志保持原样。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -14,6 +18,13 @@ service = TaskcrawlService()
 
 LIST_FIELDS = ["任务编号", "采集源名称", "规则编号", "调度周期", "增量字段", "批次大小", "起始水位", "截止水位"]
 STATUSES = ["草稿", "待调度", "执行中", "已完成", "已终止"]
+
+
+@router.get("/rule-status", response_model=dict)
+def rule_status(numbers: str = Query(default="", description="逗号分隔的规则编号")) -> dict:
+    """读取任务引用规则的当前状态，任务清单与规则详情冲突时以此为准。"""
+    wanted = [item.strip() for item in numbers.split(",") if item.strip()]
+    return {"items": service.rule_status_board(wanted)}
 
 
 @router.get("", response_model=PageResult[dict])
@@ -41,21 +52,25 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条采集任务，缺字段时说明原因而不是静默丢弃。"""
-    entry, missing = service.create_entry(payload.values)
-    if missing:
-        return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+    """登记一条采集任务，缺字段或编号重复时说明原因而不是静默丢弃。"""
+    entry, message = service.create_entry(payload.merged_values())
+    if entry is None:
+        return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message="采集任务已登记", entry=entry)
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
-    """对单条采集任务执行提交调度、启动任务、终止任务；不允许的动作会被拦下并说明原因。"""
-    action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
-    if entry is None:
-        return ActionResult(ok=False, message=message)
-    return ActionResult(ok=True, message=message, entry=entry)
+    """对单条采集任务执行提交调度、启动任务、终止任务；规则状态不允许时会被拦下并说明原因。"""
+    values = payload.merged_values()
+    action = str(values.get("action") or "").strip()
+    outcome = service.run_action(entry_id, action, values)
+    return ActionResult(
+        ok=outcome.ok,
+        message=outcome.message,
+        entry=outcome.entry,
+        duplicate=outcome.duplicate,
+    )
 
 
 @router.get("/export")

@@ -33,3 +33,17 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .link { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; }
 .page-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .error-text { color: #b42318; }
+.notice-text { color: #0a7f42; }
+.empty-note { color: var(--muted); }
+.reason-cell { max-width: 320px; }
+.history-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.status-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: #eef2f7; color: #334155; }
+.status-草稿 { background: #f1f5f9; color: #475569; }
+.status-规则验证中 { background: #fff7e6; color: #b45309; }
+.status-已启用 { background: #e8f6ee; color: #0a7f42; }
+.status-已废弃 { background: #fde8e8; color: #b42318; }
+.status-规则缺失 { background: #fde8e8; color: #b42318; }
+.status-待调度 { background: #eef4ff; color: #1f6feb; }
+.status-执行中 { background: #e8f6ee; color: #0a7f42; }
+.status-已完成 { background: #eef2f7; color: #334155; }
+.status-已终止 { background: #f1f5f9; color: var(--muted); }
